@@ -8,8 +8,17 @@ data/ganpop*
 .Rproj.user
 *.Rproj
 */*.Rproj
+*/*/*.Rproj
+.Rhistory
+*/.Rhistory
+*/*/.Rhistory
 
 # All installation files
 src/*egg-info/
 src/*egg-info/*
 
+# Raw and processed data
+src/synthpop_sandbox/UK synthpop/*/data/
+src/synthpop_sandbox/UK synthpop/*/data/*
+src/synthpop_sandbox/UK synthpop/*/constraints/
+src/synthpop_sandbox/UK synthpop/*/constraints/*

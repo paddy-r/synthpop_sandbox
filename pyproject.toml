@@ -22,4 +22,5 @@ dependencies = [
     'sdv',
     'ipfn',
     'pyipf',
+    'openpyxl',
 ]
