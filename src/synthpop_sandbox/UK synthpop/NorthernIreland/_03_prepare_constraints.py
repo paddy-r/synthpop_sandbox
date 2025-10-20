@@ -11,32 +11,48 @@ from _02_run_queries import *
 
 
 ### Definitions ###
-POP_VAR_MAP = {'Geography code': 'areacode',
-               'All households': 'number',
-               }
-RUC_VAR_MAP = {'DZ2021_code': 'areacode',
-               'Urban_status': 'urban_status',
-               }
-RUC_URBAN = 'Urban'  # Binary identifier; other is
-RUC_OUT = os.path.join(OUTPUT_PATH, 'census2021_c1_urbanrural_master.csv')
 
 
-def get_raw_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
+def process_population_data(_cache=True):
+    pop_data = {}
+    for _pop, _dict in POP_DICT.items():
+        data = pd.read_excel(_dict['file'],
+                             sheet_name=_dict['sheet'],
+                             header=_dict['header_row'],
+                             )
+        var_map = _dict['var_map']
+        data = data[list(var_map)].rename(columns=var_map)
+
+        if _cache:
+            cache_full = _dict['outfile']
+            data.to_csv(cache_full, index=False)
+        pop_data[_pop] = data
+    return pop_data
+
+
+def process_urban_rural_data(pop_hh):
+    # Standardise urban-rural classification
+    ruc_raw = pd.read_csv(RUC_RAW)
+    ruc_hh = ruc_raw[list(RUC_VAR_MAP)].rename(columns=RUC_VAR_MAP)
+
+    ruc = pop_hh.merge(ruc_hh, on='areacode')
+    ruc['urban_status'] = ruc['urban_status'] == 'Urban'
+    ruc['urban_status'] = ruc['urban_status'].astype(int)
+
+    # Farm out each binary value to new columns and drop old one
+    ruc['urban'] = ruc['number'] * ruc['urban_status']
+    ruc['rural'] = ruc['number'] * (1 - ruc['urban_status'])
+    ruc = ruc.drop(columns=['number', 'urban_status']).set_index('areacode')
+    ruc.columns = ['data_hh_urban_rural%' + el for el in ruc.columns]
+
+    ruc.to_csv(RUC_OUT)
+    return ruc
+
+
+def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
     _dict = CONSTRAINTS[_label]
-    url = _dict['url']
-    _cache_pathfull = os.path.join(_cache_path, _label + '.csv')
-
-    try:
-        print('Trying to get raw constraint data for {} from cache...'.format(_label))
-        processed = pd.read_csv(_cache_pathfull)
-        print('Found it!')
-        return processed
-    except:
-        pass
-
-    print('Failed, retrieving from web...')
-    raw = get_data_from_url(url)
-    print('Done!')
+    _cache_fullpath = get_raw_constraint_fullpath(_label)
+    raw = pd.read_csv(_cache_fullpath)
 
     # Filter for correct HRP indicator value
     is_hrp = _dict.get('hrp', HRP_DEFAULT)
@@ -46,23 +62,35 @@ def get_raw_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
 
     areacode_col = _dict.get('areacode_col', AREACODE_COL_DEFAULT)
     count_col = _dict.get('count_col', COUNT_COL_DEFAULT)
-    var_cols = _dict['var_cols']
-    var_labels = _dict['var_labels']
-    processed = raw[[areacode_col, count_col] + var_cols].copy()
+    var_map = {areacode_col: AREACODE_DEFAULT, count_col: COUNT_DEFAULT} | _dict['var_map']
+    raw = raw.rename(columns=var_map)
+    processed = raw[list(var_map.values())]
 
-    # Standardise column headers
-    _map = {areacode_col: AREACODE_DEFAULT, count_col: COUNT_DEFAULT} | dict(zip(var_cols, var_labels))
-    processed.rename(columns=_map, inplace=True)
+    category_map = _dict['category_map']
+    category_list = list(category_map)
+    for _var, _map in category_map.items():
+        processed[_var] = processed[_var].map(_map)
 
-    # Combine multivariate columns
-    if len(var_cols) > 1:
-        combi_col = VAR_SEPARATOR.join(var_labels)
-        processed[combi_col] = processed[var_labels].astype(str).agg(VAR_SEPARATOR.join, axis=1)
-        processed.drop(columns=var_labels, inplace=True)
+    processed = processed.pivot_table(index=AREACODE_DEFAULT,
+                                      columns=list(category_map),
+                                      values=COUNT_DEFAULT,
+                                      aggfunc='sum')  # Must specify sum as default is mean => very wrong
+
+    is_hh_level = _dict.get('hh_level', HH_LEVEL_DEFAULT)
+    if is_hh_level:
+        _level = 'hh_'
+    else:
+        _level = 'ind_'
+    _label_sequence = '_'.join(category_list)
+    full_label = 'data_' + _level + _label_sequence + LABEL_JOINER
+    if len(category_list) > 1:  # Accounts for multivariate constraints
+        processed.columns = processed.columns.map('_'.join)
+    processed.columns = [full_label + el for el in processed.columns]
 
     if cache:
         print('Caching to file')
-        processed.to_csv(_cache_pathfull, index=False)
+        _processed_fullpath = get_processed_constraint_fullpath(_label)
+        processed.to_csv(_processed_fullpath)
 
     return processed
 
@@ -71,28 +99,79 @@ def get_raw_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
 def main(_labels=CONSTRAINTS):
     print('\n## Running 03_prepare_constraints... ##')
 
-    # Standardise urban-rural classification
-    ruc_raw = pd.read_csv(NI_RUC_RAW)
-    pop_raw = pd.read_csv(NI_POP_RAW)
+    # Prepare population data by DZ
+    pop_data = process_population_data()
+    pop_hh = pop_data['hh']
 
-    ruc_standard = ruc_raw[list(RUC_VAR_MAP)].rename(columns=RUC_VAR_MAP)
-    pop_standard = pop_raw[list(POP_VAR_MAP)].rename(columns=POP_VAR_MAP)
+    # Get rural-urban classification master constraint data
+    ruc_data = process_urban_rural_data(pop_hh)
 
-    ruc = pop_standard.merge(ruc_standard, on='areacode')
-    ruc['urban_status'] = ruc['urban_status'] == 'Urban'
-    ruc['urban_status'] = ruc['urban_status'].astype(int)
+    # Process constraint set
+    constraint_set = ['sex2_age11_ind',      # Ind multivariate
+                      'ethnicity13_ind',     # Ind univariate
+                      'centralheating2_hh',  # HH univariate
+                      'employed4size4_hh',   # HH multivariate
+                      ]
+    # constraint_set = CONSTRAINTS
 
-    # Farm out each binary value to new columns and drop old one
-    ruc['urban'] = ruc['number'] * ruc['urban_status']
-    ruc['rural'] = ruc['number'] * (1 - ruc['urban_status'])
-    ruc.drop(columns=['number', 'urban_status'], inplace=True)
+    data = {}
+    for _label in CONSTRAINTS:
+        try:
+            data[_label] = process_constraint_data(_label)
+            print('Done for constraint:', _label)
+        except Exception as e:
+            print(e)
+            print("Couldn't do constraint:", _label)
 
-    ruc.to_csv(RUC_OUT, index=False)
-
-    # Cycle over all other (i.e. not urban-rural) constraints
-    data = {l: get_raw_constraint_data(l) for l in _labels}
-    return data
+    # data = {l: process_constraint_data(l) for l in _labels}
+    return ruc_data, data
 
 
 if __name__ == "__main__":
-    data = main()
+
+    # Get constraints data
+    ruc_data, data = main()
+
+    # Begin master constraint table construction: stem and RUC master constraint...
+    stem = pd.DataFrame(index=ruc_data.index)  # Get master set of Data Zones from RUC data, as no empty cells
+    stem['population'] = ruc_data.sum(axis=1)  # Just grab total hh population from sum of urban-rural master constraint
+    constraints = stem.merge(ruc_data, how='left', on='areacode')
+
+    # ...then merge individual constraints
+    for _label, _dataset in data.items():
+        constraints = constraints.merge(_dataset, how='left', on='areacode')
+
+    # Now must grab Scotland US pool data...
+    scot_pool_fullpath = os.path.join(UK808_PATH, 'data', 'us_hh_export_go.csv')
+    scot_pool = pd.read_csv(scot_pool_fullpath).set_index('id')
+
+    # scot_cons_fullpath = os.path.join(UK808_PATH, 'data', 'census2022_all_go.csv')
+    # scot_cons = pd.read_csv(scot_cons_fullpath).set_index('OA2022')
+
+    # ...then subset constraints and make sure order is correct by sorting both
+    # scot_cons.columns = [el.replace('age_sex', 'sex_age') for el in scot_cons.columns]  # Age-sex order in headers is wrong!
+    scot_pool.columns = [el.replace('age_sex', 'sex_age') for el in scot_pool.columns]  # Age-sex order in headers is wrong!
+    common_columns = list(set(constraints.columns) & set(scot_pool.columns))
+    scot_pool = scot_pool[common_columns]
+
+    missing_columns = list(set(constraints.columns) - set(scot_pool.columns) - {'population'})
+    scot_pool.loc[:, missing_columns] = 0  # Option 1: Create missing columns and fill with zeroes, to agree with NI constraints columns
+    # constraints.drop(columns=missing_columns, axis=1, inplace=True)  # Option 2: Remove those missing columns from constraints table
+
+    scot_pool.sort_index(axis=1, inplace=True)
+    constraints.sort_index(axis=1, inplace=True)
+    column_to_move = constraints.pop('population')
+    constraints.insert(0, 'population', column_to_move)
+
+    # Dump constraints and subsetted US pool data; names are given in UK808 config file, config_ni.json
+    constraints_file = 'census2021_ni_go.csv'
+    pool_file = 'us_hh_export_ni_go.csv'
+    constraints_fullpath = os.path.join(FINAL_PATH, constraints_file)
+    constraints_fullpath_synthpop = os.path.join(UK808_PATH, 'data', constraints_file)
+    pool_fullpath = os.path.join(FINAL_PATH, pool_file)
+    pool_fullpath_synthpop = os.path.join(UK808_PATH, 'data', pool_file)
+
+    constraints.to_csv(constraints_fullpath)
+    constraints.to_csv(constraints_fullpath_synthpop)
+    scot_pool.to_csv(pool_fullpath)
+    scot_pool.to_csv(pool_fullpath_synthpop)

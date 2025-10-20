@@ -19,72 +19,175 @@ from io import StringIO
 NI_PATH = up(__file__)
 RAW_DATA_PATH = os.path.join(NI_PATH, 'data')
 OUTPUT_PATH = os.path.join(NI_PATH, 'constraints')
+FINAL_PATH = os.path.join(NI_PATH, 'final')
+
+# Paths to simulated annealing package, UK808
+HOME_PATH = os.path.expanduser("~")
+UK808_PATH = os.path.join(HOME_PATH, 'data', 'UK808-0610v2')
 
 # Urban-rural classification (RUC)
-NI_RUC_URL = "https://www.nisra.gov.uk/sites/nisra.gov.uk/files/publications/geography-data-zone-and-super-data-zone-lookups.xlsx"
-NI_RUC_SHEET = "DZ21_Urban_mixed_rural_lookup"
-NI_RUC_RAW = os.path.join(RAW_DATA_PATH, 'ni_ruc_raw.csv')
+RUC_URL = "https://www.nisra.gov.uk/sites/nisra.gov.uk/files/publications/geography-data-zone-and-super-data-zone-lookups.xlsx"
+RUC_SHEET = "DZ21_Urban_mixed_rural_lookup"
+RUC_RAW = os.path.join(RAW_DATA_PATH, 'ni_ruc_raw.csv')
+RUC_VAR_MAP = {'DZ2021_code': 'areacode',
+               'Urban_status': 'urban_status',
+               }
+RUC_URBAN = 'Urban'  # Binary identifier; other is "Urban_mixed_rural_status" and so not appropriate
+RUC_OUT = os.path.join(OUTPUT_PATH, 'census2021_c1_urbanrural_master.csv')
 
-NI_POP_FILE = os.path.join(RAW_DATA_PATH, "census-2021-ms-e01.xlsx")
-NI_POP_SHEET = "DZ"
-NI_POP_HEADER = 5
-NI_POP_RAW = os.path.join(RAW_DATA_PATH, 'ni_pop_raw.csv')
+# Population data - manually downloaded
+POP_DICT = {'hh': {'file': os.path.join(RAW_DATA_PATH, "census-2021-ms-e01.xlsx"),
+                   'sheet': "DZ",
+                   'header_row': 5,
+                   'var_map': {'Geography code': 'areacode',
+                               'All households': 'number',
+                               },
+                   'outfile': os.path.join(OUTPUT_PATH, "census2021_pop_hh.csv"),
+                   },
+            'ind': {'file': os.path.join(RAW_DATA_PATH, "census-2021-ms-a01.xlsx"),
+                    'sheet': 'DZ',
+                    'header_row': 5,
+                    'var_map': {'Geography Code': 'areacode',
+                                'All usual residents': 'number',
+                                },
+                    'outfile': os.path.join(OUTPUT_PATH, "census2021_pop_ind.csv"),
+                    },
+            }
 
+# All defaults for automated constraint data retrieval from NISRA
 AREACODE_COL_DEFAULT = 'Census 2021 Data Zone Code'
 AREACODE_DEFAULT = 'areacode'
 COUNT_COL_DEFAULT = 'Count'
 COUNT_DEFAULT = 'count'
-IND_LEVEL_DEFAULT = True
+HH_LEVEL_DEFAULT = True
 HRP_DEFAULT = False
 HRP_COL_DEFAULT = 'Household Reference Person Indicator Code'
-VAR_SEPARATOR = '__'
+LABEL_JOINER = '%'
 
-# Constraints data dictionary
-CONSTRAINTS = {'highestqual8_ind': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=HIGHEST_QUALIFICATION',
-                                    'var_cols': ['Qualifications (Highest Level) Code',
-                                                 ],
-                                    'var_labels': ['qual8_ind',
-                                                   ],
-                                    'ind_level': True,
-                                    },
-               'age8_sex2_ind': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=AGE_BAND_AGG8&v=UR_SEX',
-                                 'var_cols': ['Age - 8 Categories Code',
-                                              'Sex Code',
-                                              ],
-                                 'var_labels': ['age8_ind',
-                                                'sex2_ind',
-                                                ],
-                                 'ind_level': True,
-                                 },
-               'tenure7_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_TENURE_AGG7',
-                              'var_cols': ['Tenure - 7 Categories Code',
-                                           ],
-                              'var_labels': ['tenure7_hh',
-                                             ]
-                              },
-               'age8_sex2_hrp': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=HH_REFERENCE_PERSON_IND&v=AGE_BAND_AGG8&v=UR_SEX',
-                                 'var_cols': ['Age - 8 Categories Code',
-                                              'Sex Code',
-                                              ],
-                                 'var_labels': ['age8_hrp',
-                                                'sex2_hrp',
-                                                ],
-                                 'hrp': True,
-                                 },
-               }
-
+# Constraints data dictionary, fully automated
+# 1. Constraint label should indicate specific variable type, e.g. age11 is the NISRA 11-category age spec
+# 2. URL is found manually using the NISRA custom table builder here: https://build.nisra.gov.uk/en/custom/dataset
+# 3. The URL is modified at runtime to retrieve the corresponding CSV
+# 4. var_map maps the variables as given in the NISRA dataset to those required for the final constraint format
+# 5. These should be in the same order as appear in the final format, as should those in category_map
+# 6. Each value in var_map has a corresponding key in category_map, which maps to the final constraint categories
+# 7. hh_level and hrp specify whether data are at hh (or ind) level, or HRP level, as these require specific processing
+CONSTRAINTS = {
+    # 'highestqual8_ind': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=HIGHEST_QUALIFICATION',
+    #                      'var_cols': ['Qualifications (Highest Level) Code',
+    #                                   ],
+    #                      'var_labels': ['qual8_ind',
+    #                                     ],
+    #                      'hh_level': False,
+    #                      },
+    'sex2_age11_ind': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=AGE_BAND_AGG11&v=UR_SEX',
+                       'var_map': {'Sex Code': 'sex',
+                                   'Age - 11 Categories Code': 'age',
+                                   },
+                       'category_map': {'sex': {1: 'f',
+                                                2: 'm',
+                                                },
+                                        'age': {1: '00_15',
+                                                2: '16_24',
+                                                3: '25_34',
+                                                4: '25_34',
+                                                5: '35_49',
+                                                6: '35_49',
+                                                7: '35_49',
+                                                8: '50_64',
+                                                9: '50_64',
+                                                10: '50_64',
+                                                11: '65_over',
+                                                },
+                                        },
+                       'hh_level': False,
+                       },
+    'ethnicity13_ind': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=ETHNIC_GROUP_INTERMEDIATE',
+                    'var_map': {'Ethnic Group Code': 'ethnicity',
+                                },
+                    'category_map': {'ethnicity': {1: 'white',
+                                                   2: 'white',
+                                                   3: 'white',
+                                                   4: 'asian',
+                                                   5: 'asian',
+                                                   6: 'asian',
+                                                   7: 'asian',
+                                                   8: 'ethnicity_other',
+                                                   9: 'asian',
+                                                   10: 'african',
+                                                   11: 'caribbean_black',
+                                                   12: 'mixed',
+                                                   13: 'ethnicity_other',
+                                                   },
+                                     },
+                    'hh_level': False,
+                    },
+    'centralheating2_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_CENTRAL_HEATING_IND',
+                           'var_map': {'Central Heating - 2 Categories Code': 'heating',
+                                       },
+                           'category_map': {'heating': {0: 'without_heating',
+                                                        1: 'with_heating',
+                                                        },
+                                            },
+                           },
+    'employed4size4_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_ADULTS_EMPLOYMENT_TC3&v=HH_SIZE_TC4',
+                          'var_map': {'Adults in Employment (Household) Code': 'employment',
+                                      'Household Size - 4 Categories Code': 'size',
+                                      },
+                          'category_map': {'employment': {0: 'employed_0',
+                                                          1: 'employed_1',
+                                                          2: 'employed_2',
+                                                          3: 'employed_3',
+                                                          },
+                                           'size': {1: 'hh_size_1',
+                                                    2: 'hh_size_2',
+                                                    3: 'hh_size_3',
+                                                    4: 'hh_size_4',
+                                                    },
+                                           },
+                          },
+    # 'tenure7_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_TENURE_AGG7',
+    #                'var_cols': ['Tenure - 7 Categories Code',
+    #                             ],
+    #                'var_labels': ['tenure7_hh',
+    #                               ]
+    #                },
+    # 'age8_sex2_hrp': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=HH_REFERENCE_PERSON_IND&v=AGE_BAND_AGG8&v=UR_SEX',
+    #                   'var_cols': ['Age - 8 Categories Code',
+    #                                'Sex Code',
+    #                                ],
+    #                   'var_labels': ['age8_hrp',
+    #                                  'sex2_hrp',
+    #                                  ],
+    #                   'hrp': True,
+    #                   },
+}
 
 ### Functions ###
 def check_folders_present():
-    for p in [RAW_DATA_PATH, OUTPUT_PATH]:
+    for p in [RAW_DATA_PATH, OUTPUT_PATH, FINAL_PATH]:
         if not os.path.exists(p):
             os.makedirs(p)
 
 
-def get_data_from_url(url):
+def get_raw_constraint_fullpath(_label):
+    fullpath = os.path.join(RAW_DATA_PATH, _label + '.csv')
+    return fullpath
+
+
+def get_processed_constraint_fullpath(_label):
+    fullpath = os.path.join(OUTPUT_PATH, 'census2021_' + _label + '.csv')
+    return fullpath
+
+
+def get_raw_constraint_data(_label, _cache=True):
+    url = CONSTRAINTS[_label]['url']
     url_corrected = url.replace('data', 'table.csv')
     request_response = requests.get(url_corrected)
     data = pd.read_csv(StringIO(request_response.text))
+    if _cache:
+        fullpath = get_raw_constraint_fullpath(_label)
+        data.to_csv(fullpath, index=False)
     return data
 
 
@@ -95,19 +198,16 @@ def main():
     # Create data folders
     check_folders_present()
 
-    # Get urban_rural classification
-    ni_ruc = pd.read_excel(NI_RUC_URL,
-                           sheet_name=NI_RUC_SHEET,
+    # Get urban_rural classification - different format to other constraints
+    ni_ruc = pd.read_excel(RUC_URL,
+                           sheet_name=RUC_SHEET,
                            )
-    ni_ruc.to_csv(NI_RUC_RAW, index=False)
+    ni_ruc.to_csv(RUC_RAW, index=False)
 
-    ni_pop = pd.read_excel(NI_POP_FILE,
-                           sheet_name=NI_POP_SHEET,
-                           header=NI_POP_HEADER,
-                           )
-    ni_pop.to_csv(NI_POP_RAW, index=False)
+    # Retrieve all raw constraints data
+    data = {el: get_raw_constraint_data(el) for el in CONSTRAINTS}
+    return data
 
 
 if __name__ == "__main__":
-    main()
-
+    data = main()
