@@ -13,6 +13,7 @@ from _02_run_queries import *
 ### Definitions ###
 # CONFIG_FILE = 'config.json'  # Default (Scotland) config - for testing
 CONFIG_FILE = 'config_ni.json'  # NI config
+# CONFIG_FILE = 'config_ni_test.json'  # NI config with reduced columns for testing
 
 
 ### Main ###

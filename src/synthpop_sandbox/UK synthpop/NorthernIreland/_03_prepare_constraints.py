@@ -64,7 +64,7 @@ def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
     count_col = _dict.get('count_col', COUNT_COL_DEFAULT)
     var_map = {areacode_col: AREACODE_DEFAULT, count_col: COUNT_DEFAULT} | _dict['var_map']
     raw = raw.rename(columns=var_map)
-    processed = raw[list(var_map.values())]
+    processed = raw[list(var_map.values())].copy()  # Copying avoids Pandas warnings
 
     category_map = _dict['category_map']
     category_list = list(category_map)
@@ -107,15 +107,16 @@ def main(_labels=CONSTRAINTS):
     ruc_data = process_urban_rural_data(pop_hh)
 
     # Process constraint set
-    constraint_set = ['sex2_age11_ind',      # Ind multivariate
-                      'ethnicity13_ind',     # Ind univariate
-                      'centralheating2_hh',  # HH univariate
-                      'employed4size4_hh',   # HH multivariate
-                      ]
+    constraint_set = [
+        'sex2_age11_ind',      # Ind multivariate
+        'ethnicity13_ind',     # Ind univariate
+        'centralheating2_hh',  # HH univariate
+        'employed4size4_hh',   # HH multivariate
+    ]
     # constraint_set = CONSTRAINTS
 
     data = {}
-    for _label in CONSTRAINTS:
+    for _label in constraint_set:
         try:
             data[_label] = process_constraint_data(_label)
             print('Done for constraint:', _label)
@@ -155,8 +156,8 @@ if __name__ == "__main__":
     scot_pool = scot_pool[common_columns]
 
     missing_columns = list(set(constraints.columns) - set(scot_pool.columns) - {'population'})
-    scot_pool.loc[:, missing_columns] = 0  # Option 1: Create missing columns and fill with zeroes, to agree with NI constraints columns
-    # constraints.drop(columns=missing_columns, axis=1, inplace=True)  # Option 2: Remove those missing columns from constraints table
+    # scot_pool.loc[:, missing_columns] = 0  # Option 1: Create missing columns and fill with zeroes, to agree with NI constraints columns
+    constraints.drop(columns=missing_columns, axis=1, inplace=True)  # Option 2: Remove those missing columns from constraints table
 
     scot_pool.sort_index(axis=1, inplace=True)
     constraints.sort_index(axis=1, inplace=True)
