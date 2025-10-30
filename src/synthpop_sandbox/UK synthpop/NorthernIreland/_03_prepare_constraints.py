@@ -143,14 +143,10 @@ if __name__ == "__main__":
         constraints = constraints.merge(_dataset, how='left', on='areacode')
 
     # Now must grab Scotland US pool data...
-    scot_pool_fullpath = os.path.join(UK808_PATH, 'data', 'us_hh_export_go.csv')
+    scot_pool_fullpath = os.path.join(UK808_PATH, 'data', 'Northern Ireland', 'us_hh_export_ni_go.csv')
     scot_pool = pd.read_csv(scot_pool_fullpath).set_index('id')
 
-    # scot_cons_fullpath = os.path.join(UK808_PATH, 'data', 'census2022_all_go.csv')
-    # scot_cons = pd.read_csv(scot_cons_fullpath).set_index('OA2022')
-
     # ...then subset constraints and make sure order is correct by sorting both
-    # scot_cons.columns = [el.replace('age_sex', 'sex_age') for el in scot_cons.columns]  # Age-sex order in headers is wrong!
     scot_pool.columns = [el.replace('age_sex', 'sex_age') for el in scot_pool.columns]  # Age-sex order in headers is wrong!
     common_columns = list(set(constraints.columns) & set(scot_pool.columns))
     scot_pool = scot_pool[common_columns]
