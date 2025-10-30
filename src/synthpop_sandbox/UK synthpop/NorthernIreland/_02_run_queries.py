@@ -23,7 +23,8 @@ FINAL_PATH = os.path.join(NI_PATH, 'final')
 
 # Paths to simulated annealing package, UK808
 HOME_PATH = os.path.expanduser("~")
-UK808_PATH = os.path.join(HOME_PATH, 'data', 'UK808-0610v2')
+# UK808_PATH = os.path.join(HOME_PATH, 'data', 'UK808-0610v2')
+UK808_PATH = os.path.join(HOME_PATH, 'data', 'compass')  # HR 30/10/25 Updated to Compass path
 
 # Urban-rural classification (RUC)
 RUC_URL = "https://www.nisra.gov.uk/sites/nisra.gov.uk/files/publications/geography-data-zone-and-super-data-zone-lookups.xlsx"
