@@ -24,7 +24,8 @@ FINAL_PATH = os.path.join(NI_PATH, 'final')
 # Paths to simulated annealing package, UK808
 HOME_PATH = os.path.expanduser("~")
 # UK808_PATH = os.path.join(HOME_PATH, 'data', 'UK808-0610v2')
-UK808_PATH = os.path.join(HOME_PATH, 'data', 'compass')  # HR 30/10/25 Updated to Compass path
+COMPASS_PATH = os.path.join(HOME_PATH, 'data', 'compass')  # HR 30/10/25 Updated to Compass path
+SCOTLAND_PATH = os.path.join(HOME_PATH, 'data', '_From Scotland synthpop')  # HR 31/10/25 Microdata and US from Scotland synthpop
 
 # Urban-rural classification (RUC)
 RUC_URL = "https://www.nisra.gov.uk/sites/nisra.gov.uk/files/publications/geography-data-zone-and-super-data-zone-lookups.xlsx"
@@ -74,6 +75,26 @@ LABEL_JOINER = '%'
 # 6. Each value in var_map has a corresponding key in category_map, which maps to the final constraint categories
 # 7. hh_level and hrp specify whether data are at hh (or ind) level, or HRP level, as these require specific processing
 CONSTRAINTS = {
+    'ethnicity13_ind': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=ETHNIC_GROUP_INTERMEDIATE',
+                    'var_map': {'Ethnic Group Code': 'ethnicity',
+                                },
+                    'category_map': {'ethnicity': {1: 'white',
+                                                   2: 'white',
+                                                   3: 'white',
+                                                   4: 'asian',
+                                                   5: 'asian',
+                                                   6: 'asian',
+                                                   7: 'asian',
+                                                   8: 'ethnicity_other',
+                                                   9: 'asian',
+                                                   10: 'african',
+                                                   11: 'caribbean_black',
+                                                   12: 'mixed',
+                                                   13: 'ethnicity_other',
+                                                   },
+                                     },
+                    'hh_level': False,
+                    },
     # 'highestqual8_ind': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=HIGHEST_QUALIFICATION',
     #                      'var_cols': ['Qualifications (Highest Level) Code',
     #                                   ],
@@ -103,26 +124,6 @@ CONSTRAINTS = {
                                         },
                        'hh_level': False,
                        },
-    'ethnicity13_ind': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=ETHNIC_GROUP_INTERMEDIATE',
-                    'var_map': {'Ethnic Group Code': 'ethnicity',
-                                },
-                    'category_map': {'ethnicity': {1: 'white',
-                                                   2: 'white',
-                                                   3: 'white',
-                                                   4: 'asian',
-                                                   5: 'asian',
-                                                   6: 'asian',
-                                                   7: 'asian',
-                                                   8: 'ethnicity_other',
-                                                   9: 'asian',
-                                                   10: 'african',
-                                                   11: 'caribbean_black',
-                                                   12: 'mixed',
-                                                   13: 'ethnicity_other',
-                                                   },
-                                     },
-                    'hh_level': False,
-                    },
     'centralheating2_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_CENTRAL_HEATING_IND',
                            'var_map': {'Central Heating - 2 Categories Code': 'heating',
                                        },
@@ -131,6 +132,12 @@ CONSTRAINTS = {
                                                         },
                                             },
                            },
+    # 'tenure7_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_TENURE_AGG7',
+    #                'var_cols': ['Tenure - 7 Categories Code',
+    #                             ],
+    #                'var_labels': ['tenure7_hh',
+    #                               ]
+    #                },
     'employed4size4_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_ADULTS_EMPLOYMENT_TC3&v=HH_SIZE_TC4',
                           'var_map': {'Adults in Employment (Household) Code': 'employment',
                                       'Household Size - 4 Categories Code': 'size',
@@ -147,19 +154,13 @@ CONSTRAINTS = {
                                                     },
                                            },
                           },
-    # 'tenure7_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_TENURE_AGG7',
-    #                'var_cols': ['Tenure - 7 Categories Code',
-    #                             ],
-    #                'var_labels': ['tenure7_hh',
-    #                               ]
-    #                },
     # 'age8_sex2_hrp': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=HH_REFERENCE_PERSON_IND&v=AGE_BAND_AGG8&v=UR_SEX',
-    #                   'var_cols': ['Age - 8 Categories Code',
-    #                                'Sex Code',
-    #                                ],
-    #                   'var_labels': ['age8_hrp',
-    #                                  'sex2_hrp',
-    #                                  ],
+    #                   'var_map': {'Age - 8 Categories Code': 'age_hrp',
+    #                               'Sex Code': 'sex_hrp',
+    #                               },
+    #                   'category_map': {'age_hrp': {},
+    #                                    'sex_hrp': {},
+    #                                    },
     #                   'hrp': True,
     #                   },
 }

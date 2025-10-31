@@ -19,7 +19,7 @@ CONFIG_FILE = 'config_ni.json'  # NI config
 def main():
     print('\n## Running 05_create_synthpop... ##')
     previous_wd = os.getcwd()
-    os.chdir(UK808_PATH)
+    os.chdir(COMPASS_PATH)
     exe_file = 'COMPASS'
     fullargs = ' '.join(['./' + exe_file, '-c', '-f', CONFIG_FILE])  # NI version
     print('Running simulated annealing code via cmd:', fullargs)

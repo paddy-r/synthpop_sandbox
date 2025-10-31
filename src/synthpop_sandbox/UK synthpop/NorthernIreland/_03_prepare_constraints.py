@@ -112,6 +112,7 @@ def main(_labels=CONSTRAINTS):
         'ethnicity13_ind',     # Ind univariate
         'centralheating2_hh',  # HH univariate
         'employed4size4_hh',   # HH multivariate
+        # 'age8_sex2_hrp',       # HH multivariate
     ]
     # constraint_set = CONSTRAINTS
 
@@ -143,7 +144,8 @@ if __name__ == "__main__":
         constraints = constraints.merge(_dataset, how='left', on='areacode')
 
     # Now must grab Scotland US pool data...
-    scot_pool_fullpath = os.path.join(UK808_PATH, 'data', 'Northern Ireland', 'us_hh_export_ni_go.csv')
+    # scot_pool_fullpath = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', 'us_hh_export_ni_go.csv')
+    scot_pool_fullpath = os.path.join(SCOTLAND_PATH, 'us_hh_export_go.csv')
     scot_pool = pd.read_csv(scot_pool_fullpath).set_index('id')
 
     # ...then subset constraints and make sure order is correct by sorting both
@@ -164,9 +166,9 @@ if __name__ == "__main__":
     constraints_file = 'census2021_ni_go.csv'
     pool_file = 'us_hh_export_ni_go.csv'
     constraints_fullpath = os.path.join(FINAL_PATH, constraints_file)
-    constraints_fullpath_synthpop = os.path.join(UK808_PATH, 'data', constraints_file)
+    constraints_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', constraints_file)
     pool_fullpath = os.path.join(FINAL_PATH, pool_file)
-    pool_fullpath_synthpop = os.path.join(UK808_PATH, 'data', pool_file)
+    pool_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', pool_file)
 
     constraints.to_csv(constraints_fullpath)
     constraints.to_csv(constraints_fullpath_synthpop)
