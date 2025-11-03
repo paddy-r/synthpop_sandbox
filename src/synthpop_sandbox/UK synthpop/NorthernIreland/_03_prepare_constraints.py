@@ -59,6 +59,7 @@ def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
     if is_hrp:
         hrp_col = HRP_COL_DEFAULT
         raw = raw.loc[raw[hrp_col] == 1]
+        raw.drop(columns=HRP_HEADERS, inplace=True)
 
     areacode_col = _dict.get('areacode_col', AREACODE_COL_DEFAULT)
     count_col = _dict.get('count_col', COUNT_COL_DEFAULT)
@@ -107,14 +108,16 @@ def main(_labels=CONSTRAINTS):
     ruc_data = process_urban_rural_data(pop_hh)
 
     # Process constraint set
+    # constraint_set = CONSTRAINTS
     constraint_set = [
         'sex2_age11_ind',      # Ind multivariate
         'ethnicity13_ind',     # Ind univariate
+        'qual8_ind',           # Ind univariate
         'centralheating2_hh',  # HH univariate
+        # 'deprivation5_hh',     # HH Univariate
         'employed4size4_hh',   # HH multivariate
-        # 'age8_sex2_hrp',       # HH multivariate
+        # 'sex2_age11_hrp',      # HH multivariate
     ]
-    # constraint_set = CONSTRAINTS
 
     data = {}
     for _label in constraint_set:
@@ -166,9 +169,9 @@ if __name__ == "__main__":
     constraints_file = 'census2021_ni_go.csv'
     pool_file = 'us_hh_export_ni_go.csv'
     constraints_fullpath = os.path.join(FINAL_PATH, constraints_file)
-    constraints_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', constraints_file)
+    constraints_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', constraints_file)
     pool_fullpath = os.path.join(FINAL_PATH, pool_file)
-    pool_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', pool_file)
+    pool_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', pool_file)
 
     constraints.to_csv(constraints_fullpath)
     constraints.to_csv(constraints_fullpath_synthpop)
