@@ -25,7 +25,9 @@ FINAL_PATH = os.path.join(NI_PATH, 'final')
 HOME_PATH = os.path.expanduser("~")
 # UK808_PATH = os.path.join(HOME_PATH, 'data', 'UK808-0610v2')
 COMPASS_PATH = os.path.join(HOME_PATH, 'data', 'compass')  # HR 30/10/25 Updated to Compass path
-SCOTLAND_PATH = os.path.join(HOME_PATH, 'data', '_From Scotland synthpop')  # HR 31/10/25 Microdata and US from Scotland synthpop
+UK_PATH = os.path.join(HOME_PATH, 'data', '_From UK synthpop')  # HR 03/11/25 Path to UK synthpop, for grabbing EW and S data
+ENGLAND_WALES_PATH = os.path.join(UK_PATH, 'England and Wales')  # HR 03/11/25 Microdata and US from EW synthpop
+SCOTLAND_PATH = os.path.join(UK_PATH, 'Scotland')  # HR 31/10/25 Microdata and US from Scotland synthpop
 
 # Urban-rural classification (RUC)
 RUC_URL = "https://www.nisra.gov.uk/sites/nisra.gov.uk/files/publications/geography-data-zone-and-super-data-zone-lookups.xlsx"
@@ -142,14 +144,17 @@ CONSTRAINTS = {
                                                         },
                                             },
                            },
-    # 'deprivation5_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_DEPRIVATION',
-    #                     'var_map': {'Household Deprivation Code': 'deprivation'},
-    #                     'category_map': {1: 'deprivation_0',
-    #                                      2: 'deprivation_1',
-    #                                      3: 'deprivation_2',
-    #                                      4: 'deprivation_3',
-    #                                      5: 'deprivation_4'},
-    #                     },
+    'deprivation5_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_DEPRIVATION',
+                        'var_map': {'Household Deprivation Code': 'deprivation',
+                                    },
+                        'category_map': {'deprivation': {1: 'deprivation_0',
+                                                         2: 'deprivation_1',
+                                                         3: 'deprivation_2',
+                                                         4: 'deprivation_3',
+                                                         5: 'deprivation_4',
+                                                         },
+                                         },
+                        },
     # 'tenure7_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_TENURE_AGG7',
     #                'var_cols': ['Tenure - 7 Categories Code',
     #                             ],

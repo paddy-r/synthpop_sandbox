@@ -114,7 +114,7 @@ def main(_labels=CONSTRAINTS):
         'ethnicity13_ind',     # Ind univariate
         'qual8_ind',           # Ind univariate
         'centralheating2_hh',  # HH univariate
-        # 'deprivation5_hh',     # HH Univariate
+        'deprivation5_hh',     # HH Univariate
         'employed4size4_hh',   # HH multivariate
         # 'sex2_age11_hrp',      # HH multivariate
     ]
@@ -146,21 +146,27 @@ if __name__ == "__main__":
     for _label, _dataset in data.items():
         constraints = constraints.merge(_dataset, how='left', on='areacode')
 
-    # Now must grab Scotland US pool data...
-    # scot_pool_fullpath = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', 'us_hh_export_ni_go.csv')
+    # Now must grab all available US pool data (Scotland + EW)...
     scot_pool_fullpath = os.path.join(SCOTLAND_PATH, 'us_hh_export_go.csv')
     scot_pool = pd.read_csv(scot_pool_fullpath).set_index('id')
+    ew_pool_fullpath = os.path.join(ENGLAND_WALES_PATH, 'us_hh_export_go.csv')
+    ew_pool = pd.read_csv(ew_pool_fullpath).set_index('id')
+
+    # Merge S and EW data to maximise number of constraints data
+    cols_to_merge = list(set(ew_pool.columns) - set(scot_pool.columns))  # Columns only in EW data
+    gb_pool = pd.merge(scot_pool, ew_pool[cols_to_merge], left_index=True, right_index=True, how='outer')
 
     # ...then subset constraints and make sure order is correct by sorting both
-    scot_pool.columns = [el.replace('age_sex', 'sex_age') for el in scot_pool.columns]  # Age-sex order in headers is wrong!
-    common_columns = list(set(constraints.columns) & set(scot_pool.columns))
-    scot_pool = scot_pool[common_columns]
+    gb_pool.columns = [el.replace('age_sex', 'sex_age') for el in gb_pool.columns]  # Age-sex order in headers is wrong!
+    common_columns = list(set(constraints.columns) & set(gb_pool.columns))
+    gb_pool = gb_pool[common_columns]
 
-    missing_columns = list(set(constraints.columns) - set(scot_pool.columns) - {'population'})
-    # scot_pool.loc[:, missing_columns] = 0  # Option 1: Create missing columns and fill with zeroes, to agree with NI constraints columns
+    # Remove anyextraneous columns present in GB data not present in constraints
+    missing_columns = list(set(constraints.columns) - set(gb_pool.columns) - {'population'})
+    # gb_pool.loc[:, missing_columns] = 0  # Option 1: Create missing columns and fill with zeroes, to agree with NI constraints columns
     constraints.drop(columns=missing_columns, axis=1, inplace=True)  # Option 2: Remove those missing columns from constraints table
 
-    scot_pool.sort_index(axis=1, inplace=True)
+    gb_pool.sort_index(axis=1, inplace=True)
     constraints.sort_index(axis=1, inplace=True)
     column_to_move = constraints.pop('population')
     constraints.insert(0, 'population', column_to_move)
@@ -175,5 +181,5 @@ if __name__ == "__main__":
 
     constraints.to_csv(constraints_fullpath)
     constraints.to_csv(constraints_fullpath_synthpop)
-    scot_pool.to_csv(pool_fullpath)
-    scot_pool.to_csv(pool_fullpath_synthpop)
+    gb_pool.to_csv(pool_fullpath)
+    gb_pool.to_csv(pool_fullpath_synthpop)
