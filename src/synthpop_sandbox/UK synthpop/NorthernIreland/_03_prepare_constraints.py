@@ -108,16 +108,23 @@ def main(_labels=CONSTRAINTS):
     ruc_data = process_urban_rural_data(pop_hh)
 
     # Process constraint set
-    # constraint_set = CONSTRAINTS
-    constraint_set = [
-        'sex2_age11_ind',      # Ind multivariate
-        'ethnicity13_ind',     # Ind univariate
-        'qual8_ind',           # Ind univariate
-        'centralheating2_hh',  # HH univariate
-        'deprivation5_hh',     # HH Univariate
-        'employed4size4_hh',   # HH multivariate
-        # 'sex2_age11_hrp',      # HH multivariate
-    ]
+    constraint_set = CONSTRAINTS
+    # constraint_set = [
+    #     'sex2_age11_ind',      # Ind multi
+    #     'qual8_ind',           # Ind uni
+    #     'ethnicity13_ind',     # Ind uni
+    #     'marital6_ind',        # Ind uni
+    #     'health5_ind',         # Ind uni
+    #     'activity12_ind',      # Ind uni
+    #     'centralheating2_hh',  # HH uni
+    #     'deprivation5_hh',     # HH uni
+    #     'carer3_size3_hh',     # HH multi
+    #     'cars3_size4_hh',      # HH multi
+    #     'employed4_size4_hh',  # HH multi
+    #     'type9_hh',            # HH uni
+    #     # 'tenure7_child2_hh'    # HH uni  # EXCLUDE: Only 50% coverage
+    #     # 'sex2_age11_hrp',      # HH multi  # EXCLUDE: HRP data not use in EW or S so far
+    # ]
 
     data = {}
     for _label in constraint_set:
@@ -161,7 +168,7 @@ if __name__ == "__main__":
     common_columns = list(set(constraints.columns) & set(gb_pool.columns))
     gb_pool = gb_pool[common_columns]
 
-    # Remove anyextraneous columns present in GB data not present in constraints
+    # Remove any extraneous columns present in GB data not present in constraints
     missing_columns = list(set(constraints.columns) - set(gb_pool.columns) - {'population'})
     # gb_pool.loc[:, missing_columns] = 0  # Option 1: Create missing columns and fill with zeroes, to agree with NI constraints columns
     constraints.drop(columns=missing_columns, axis=1, inplace=True)  # Option 2: Remove those missing columns from constraints table
