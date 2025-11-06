@@ -1,0 +1,2 @@
+# HR 06/11/25 Coordinates of NI Data Zone 2021 population-weighted centroids
+# Downloaded from here: https://www.nisra.gov.uk/publications/census-2021-population-weighted-centroids-data-zones-and-super-data-zones
