@@ -1,0 +1,2 @@
+# HR 06/11/25 Geojson of NI Data Zone 2021 boundaries
+# Downloaded from here: https://www.nisra.gov.uk/publications/data-zone-boundaries-gis-format
