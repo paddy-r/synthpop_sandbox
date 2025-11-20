@@ -85,7 +85,7 @@ def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
     _label_sequence = '_'.join(category_list)
     full_label = 'data_' + _level + _label_sequence + LABEL_JOINER
     if len(category_list) > 1:  # Accounts for multivariate constraints
-        processed.columns = processed.columns.map('_'.join)
+        processed.columns = processed.columns.map(VARIABLE_JOINER.join)
     processed.columns = [full_label + el for el in processed.columns]
 
     if cache:
