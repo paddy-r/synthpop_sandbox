@@ -23,7 +23,9 @@ FINAL_PATH = os.path.join(NI_PATH, 'final')
 HOME_PATH = os.path.expanduser("~")
 # UK808_PATH = os.path.join(HOME_PATH, 'data', 'UK808-0610v2')
 COMPASS_PATH = os.path.join(HOME_PATH, 'data', 'compass')  # HR 30/10/25 Updated to Compass path
-SCOTLAND_PATH = os.path.join(HOME_PATH, 'data', '_From UK synthpop', 'Scotland')  # HR 31/10/25 Microdata and US from Scotland synthpop
+UK_PATH = os.path.join(HOME_PATH, 'data', '_From UK synthpop')  # HR 03/11/25 Path to UK synthpop, for grabbing EW and S data
+ENGLAND_WALES_PATH = os.path.join(UK_PATH, 'England and Wales')  # HR 03/11/25 Microdata and US from EW synthpop
+SCOTLAND_PATH = os.path.join(UK_PATH, 'Scotland')  # HR 31/10/25 Microdata and US from Scotland synthpop
 
 # Spatial stuff
 GEOJSON_NI = os.path.join(PERSISTENT_DATA_PATH, 'DZ2021.geojson')
