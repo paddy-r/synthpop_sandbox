@@ -10,7 +10,7 @@
 
 ### Main ###
 def main():
-    print('\n## Running 04_recode_setup_survey... ##')
+    print('\n## Running _04_recode_setup_survey... ##')
 
 
 if __name__ == "__main__":

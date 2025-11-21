@@ -17,7 +17,8 @@ CONFIG_FILE = 'config_ni.json'  # NI config
 
 ### Main ###
 def main():
-    print('\n## Running 05_create_synthpop... ##')
+    print('\n## Running _05_create_synthpop... ##')
+
     previous_wd = os.getcwd()
     os.chdir(COMPASS_PATH)
     exe_file = 'COMPASS'

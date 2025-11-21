@@ -19,20 +19,28 @@ PERSISTENT_DATA_PATH = os.path.join(NI_PATH, 'persistent_data')
 OUTPUT_PATH = os.path.join(NI_PATH, 'constraints')
 FINAL_PATH = os.path.join(NI_PATH, 'final')
 
-# Paths to simulated annealing package, UK808
+# Paths to simulated annealing package
 HOME_PATH = os.path.expanduser("~")
 # UK808_PATH = os.path.join(HOME_PATH, 'data', 'UK808-0610v2')
 COMPASS_PATH = os.path.join(HOME_PATH, 'data', 'compass')  # HR 30/10/25 Updated to Compass path
 UK_PATH = os.path.join(HOME_PATH, 'data', '_From UK synthpop')  # HR 03/11/25 Path to UK synthpop, for grabbing EW and S data
 ENGLAND_WALES_PATH = os.path.join(UK_PATH, 'England and Wales')  # HR 03/11/25 Microdata and US from EW synthpop
 SCOTLAND_PATH = os.path.join(UK_PATH, 'Scotland')  # HR 31/10/25 Microdata and US from Scotland synthpop
+ALL_UK_PATH = os.path.join(UK_PATH, 'All UK')  # HR 21/11/25 Microdata and US for all-UK
+
+# Lookup for microdata files
+MICRODATA_LOOKUP = {
+    'EnglandWales': os.path.join(ENGLAND_WALES_PATH, 'us_hh_export_go.csv'),
+    'Scotland': os.path.join(SCOTLAND_PATH, 'us_hh_export_go.csv'),
+    # 'AllUK': os.path.join(ALL_UK_PATH, 'us_hh_export_go.csv'),  # Placeholder - doesn't exist yet
+}
 
 # Spatial stuff
 GEOJSON_NI = os.path.join(PERSISTENT_DATA_PATH, 'DZ2021.geojson')
 POP_CENTROIDS_NI = os.path.join(PERSISTENT_DATA_PATH, 'census-2021-population-weighted-centroids-data-zone.csv')
 
 
-### Utility functions ###
+### Utility functions ###process_pop
 print('Importing utility functions...')
 
 
@@ -60,4 +68,5 @@ def merge_boundaries_centroids_ni(boundaries=None, centroids=None):
 
 
 if __name__ == "__main__":
-    m = merge_boundaries_centroids_ni()  # Testing retrieval and merging of all spatial data
+    # m = merge_boundaries_centroids_ni()  # Testing retrieval and merging of all spatial data
+    pass

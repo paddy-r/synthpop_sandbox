@@ -98,7 +98,7 @@ def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
 
 ### Main ###
 def main(_labels=CONSTRAINTS):
-    print('\n## Running 03_prepare_constraints... ##')
+    print('\n## Running _03_prepare_constraints... ##')
 
     # Prepare population data by DZ
     pop_data = process_population_data()
@@ -153,40 +153,48 @@ if __name__ == "__main__":
     for _label, _dataset in data.items():
         constraints = constraints.merge(_dataset, how='left', on='areacode')
 
-    # Now must grab all available US pool data (Scotland + EW)...
-    scot_pool_fullpath = os.path.join(SCOTLAND_PATH, 'us_hh_export_go.csv')
-    scot_pool = pd.read_csv(scot_pool_fullpath).set_index('id')
-    ew_pool_fullpath = os.path.join(ENGLAND_WALES_PATH, 'us_hh_export_go.csv')
-    ew_pool = pd.read_csv(ew_pool_fullpath).set_index('id')
+    # Now must grab all available microdata (Scotland + EW)...
+    scot_microdata_fullpath = MICRODATA_LOOKUP['Scotland']
+    scot_microdata = pd.read_csv(scot_microdata_fullpath).set_index('id')
+    ew_microdata_fullpath = MICRODATA_LOOKUP['EnglandWales']
+    ew_microdata = pd.read_csv(ew_microdata_fullpath).set_index('id')
+
+
 
     # Merge S and EW data to maximise number of constraints data
-    cols_to_merge = list(set(ew_pool.columns) - set(scot_pool.columns))  # Columns only in EW data
-    gb_pool = pd.merge(scot_pool, ew_pool[cols_to_merge], left_index=True, right_index=True, how='outer')
+    cols_to_merge = list(set(ew_microdata.columns) - set(scot_microdata.columns))  # Columns only in EW data
+    gb_microdata = pd.merge(scot_microdata, ew_microdata[cols_to_merge], left_index=True, right_index=True, how='outer')
 
     # ...then subset constraints and make sure order is correct by sorting both
-    gb_pool.columns = [el.replace('age_sex', 'sex_age') for el in gb_pool.columns]  # Age-sex order in headers is wrong!
-    common_columns = list(set(constraints.columns) & set(gb_pool.columns))
-    gb_pool = gb_pool[common_columns]
+    gb_microdata.columns = [el.replace('age_sex', 'sex_age') for el in gb_microdata.columns]  # Age-sex order in headers is wrong!
+    common_columns = list(set(constraints.columns) & set(gb_microdata.columns))
+    gb_microdata = gb_microdata[common_columns]
 
-    # Remove any extraneous columns present in GB data not present in constraints
-    missing_columns = list(set(constraints.columns) - set(gb_pool.columns) - {'population'})
-    # gb_pool.loc[:, missing_columns] = 0  # Option 1: Create missing columns and fill with zeroes, to agree with NI constraints columns
+    # Remove any extraneous columns present in microdata not present in constraints
+    missing_columns = list(set(constraints.columns) - set(gb_microdata.columns) - {'population'})
+    # gb_microdata.loc[:, missing_columns] = 0  # Option 1: Create missing columns and fill with zeroes, to agree with NI constraints columns
     constraints.drop(columns=missing_columns, axis=1, inplace=True)  # Option 2: Remove those missing columns from constraints table
 
-    gb_pool.sort_index(axis=1, inplace=True)
+    gb_microdata.sort_index(axis=1, inplace=True)
     constraints.sort_index(axis=1, inplace=True)
+
+
+
+
+
+    # Move population to first column
     column_to_move = constraints.pop('population')
     constraints.insert(0, 'population', column_to_move)
 
-    # Dump constraints and subsetted US pool data; names are given in UK808 config file, config_ni.json
+    # Dump constraints and subsetted microdata; names are given in SA config file, config_ni.json
     constraints_file = 'census2021_ni_go.csv'
-    pool_file = 'us_hh_export_ni_go.csv'
+    microdata_file = 'us_hh_export_ni_go.csv'
     constraints_fullpath = os.path.join(FINAL_PATH, constraints_file)
     constraints_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', constraints_file)
-    pool_fullpath = os.path.join(FINAL_PATH, pool_file)
-    pool_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', pool_file)
+    microdata_fullpath = os.path.join(FINAL_PATH, microdata_file)
+    microdata_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', microdata_file)
 
     constraints.to_csv(constraints_fullpath)
     constraints.to_csv(constraints_fullpath_synthpop)
-    gb_pool.to_csv(pool_fullpath)
-    gb_pool.to_csv(pool_fullpath_synthpop)
+    gb_microdata.to_csv(microdata_fullpath)
+    gb_microdata.to_csv(microdata_fullpath_synthpop)

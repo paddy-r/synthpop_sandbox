@@ -56,13 +56,14 @@ HRP_COL_DEFAULT = 'Household Reference Person Indicator Code'
 HRP_HEADERS = ["Household Reference Person Indicator Code",
                "Household Reference Person Indicator Label",
                ]
+NATION_SOURCE_DEFAULT = 'Scotland'  # Specify which nation group to grab microdata from - workaround w/o all-UK process
 LABEL_JOINER = '%'
 VARIABLE_JOINER = '_'  # Should be reserved string for separating multivariate constraints later, e.g. for validation
 
 # Constraints data dictionary, fully automated
 # 1. Constraint label should indicate specific variable type, e.g. age11 is the NISRA 11-category age spec
 # 2. URL is found manually using the NISRA custom table builder here: https://build.nisra.gov.uk/en/custom/dataset
-# 3. The URL is modified at runtime to retrieve the corresponding CSV
+# 3. The URL is modified at runtime to retrieve the corresponding CSV - method via email from NISRA
 # 4. var_map maps the variables as given in the NISRA dataset to those required for the final constraint format
 # 5. These should be in the same order as appear in the final format, as should those in category_map
 # 6. Each value in var_map has a corresponding key in category_map, which maps to the final constraint categories
@@ -168,6 +169,7 @@ CONSTRAINTS = {
                                                      },
                                         },
                        'hh_level': False,
+                       'nation_source': 'EnglandWales',
                        },
     'centralheating2_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_CENTRAL_HEATING_IND',
                            'var_map': {'Central Heating - 2 Categories Code': 'heating',
@@ -187,6 +189,7 @@ CONSTRAINTS = {
                                                          5: 'deprivation_4',
                                                          },
                                          },
+                        'nation_source': 'EnglandWales',
                         },
     'habitable6_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=NUMBER_OF_ROOMS_AGG6',
                       'var_map': {'Rooms (Number) - 6 Categories Code': 'habitable',
@@ -228,6 +231,7 @@ CONSTRAINTS = {
                                                  4: 'hh_size_4',
                                                  },
                                         },
+                       'nation_source': 'EnglandWales',
                        },
     'employed4_size4_hh': {
         'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_ADULTS_EMPLOYMENT_TC3&v=HH_SIZE_TC4',
@@ -260,6 +264,7 @@ CONSTRAINTS = {
                                            9: 'other',
                                            },
                                   },
+                 'nation_source': 'EnglandWales',
                  },
     'tenure7_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_TENURE_AGG7',
                    'var_map': {'Tenure - 7 Categories Code': 'tenure',
@@ -364,7 +369,7 @@ def get_raw_constraint_data(_label, _cache=True):
 
 ### Main ###
 def main():
-    print('\n## Running 02_run_queries... ##')
+    print('\n## Running _02_run_queries... ##')
 
     # Create data folders
     check_folders_present()
