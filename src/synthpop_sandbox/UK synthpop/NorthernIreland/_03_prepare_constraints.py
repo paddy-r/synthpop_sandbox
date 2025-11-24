@@ -77,19 +77,14 @@ def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
                                       values=COUNT_DEFAULT,
                                       aggfunc='sum')  # Must specify sum as default is mean => very wrong
 
-    is_hh_level = _dict.get('hh_level', HH_LEVEL_DEFAULT)
-    if is_hh_level:
-        _level = 'hh_'
-    else:
-        _level = 'ind_'
-    _label_sequence = '_'.join(category_list)
-    full_label = 'data_' + _level + _label_sequence + LABEL_JOINER
+    full_label = get_constraint_label(_label) + LABEL_JOINER
+
     if len(category_list) > 1:  # Accounts for multivariate constraints
         processed.columns = processed.columns.map(VARIABLE_JOINER.join)
     processed.columns = [full_label + el for el in processed.columns]
 
     if cache:
-        print('Caching to file')
+        # print('Caching to file')
         _processed_fullpath = get_processed_constraint_fullpath(_label)
         processed.to_csv(_processed_fullpath)
 
@@ -123,7 +118,7 @@ def main(_labels=CONSTRAINTS):
     #     'employed4_size4_hh',  # HH multi
     #     'type9_hh',            # HH uni
     #     # 'tenure7_child2_hh'    # HH uni  # EXCLUDE: Only 50% coverage
-    #     # 'sex2_age11_hrp',      # HH multi  # EXCLUDE: HRP data not use in EW or S so far
+    #     # 'sex2_age11_hrp',      # HH multi  # EXCLUDE: HRP data not used in EW or S so far
     # ]
 
     data = {}
@@ -134,8 +129,8 @@ def main(_labels=CONSTRAINTS):
         except Exception as e:
             print(e)
             print("Couldn't do constraint:", _label)
+            pass
 
-    # data = {l: process_constraint_data(l) for l in _labels}
     return ruc_data, data
 
 
@@ -149,52 +144,59 @@ if __name__ == "__main__":
     stem['population'] = ruc_data.sum(axis=1)  # Just grab total hh population from sum of urban-rural master constraint
     constraints = stem.merge(ruc_data, how='left', on='areacode')
 
-    # ...then merge individual constraints
+    # ...then merge individual constraints into single dataset
     for _label, _dataset in data.items():
         constraints = constraints.merge(_dataset, how='left', on='areacode')
 
-    # Now must grab all available microdata (Scotland + EW)...
-    scot_microdata_fullpath = MICRODATA_LOOKUP['Scotland']
-    scot_microdata = pd.read_csv(scot_microdata_fullpath).set_index('id')
-    ew_microdata_fullpath = MICRODATA_LOOKUP['EnglandWales']
-    ew_microdata = pd.read_csv(ew_microdata_fullpath).set_index('id')
+    # Grab all microdata...
+    mdata_lookup = get_all_microdata()
+    mdata_lookup = fix_microdata_age_sex(mdata_lookup)
+    mdata = pd.DataFrame(index=mdata_lookup['Scotland'].index)
 
+    # ...then retain only microdata present in constraints data, filling in empty columns as necessary
+    for constraint, cdata in data.items():
 
+        nation_source = CONSTRAINTS[constraint].get('nation_source', NATION_SOURCE_DEFAULT)
+        full_label = get_constraint_label(constraint) + LABEL_JOINER
+        constraint_cols = [el for el in cdata.columns if el.startswith(full_label)]
 
-    # Merge S and EW data to maximise number of constraints data
-    cols_to_merge = list(set(ew_microdata.columns) - set(scot_microdata.columns))  # Columns only in EW data
-    gb_microdata = pd.merge(scot_microdata, ew_microdata[cols_to_merge], left_index=True, right_index=True, how='outer')
+        mdata_raw = mdata_lookup[nation_source]
+        mdata_cols = [el for el in mdata_raw.columns if el.startswith(full_label)]
 
-    # ...then subset constraints and make sure order is correct by sorting both
-    gb_microdata.columns = [el.replace('age_sex', 'sex_age') for el in gb_microdata.columns]  # Age-sex order in headers is wrong!
-    common_columns = list(set(constraints.columns) & set(gb_microdata.columns))
-    gb_microdata = gb_microdata[common_columns]
+        cols_present = set(constraint_cols) & set(mdata_cols)
+        cols_missing = set(constraint_cols) - set(mdata_cols)
 
-    # Remove any extraneous columns present in microdata not present in constraints
-    missing_columns = list(set(constraints.columns) - set(gb_microdata.columns) - {'population'})
-    # gb_microdata.loc[:, missing_columns] = 0  # Option 1: Create missing columns and fill with zeroes, to agree with NI constraints columns
-    constraints.drop(columns=missing_columns, axis=1, inplace=True)  # Option 2: Remove those missing columns from constraints table
+        # Check if ANY microdata columns present; if so, fill any missing columns with zero
+        # If NO COLUMNS present, assume constraint not properly configured and ignore
+        if len(cols_present) == 0:
+            print('No microdata for {}; skipping'.format(constraint))
+            continue
 
-    gb_microdata.sort_index(axis=1, inplace=True)
-    constraints.sort_index(axis=1, inplace=True)
+        if len(cols_missing) == 0:
+            print('Complete microdata for {}; adding to final dataset'.format(constraint))
+            mdata = mdata.merge(mdata_raw[list(cols_present)], left_index=True, right_index=True)
 
+        elif len(cols_missing) > 0:
+            print('Some missing columns for {}; filling in with zeroes'.format(constraint))
+            mdata = mdata.merge(mdata_raw[list(cols_present)], left_index=True, right_index=True)
+            mdata.loc[:, list(cols_missing)] = 0
 
-
-
-
-    # Move population to first column
+    # Finally, remove any constraints data not present in microdata and sort both datasets
     column_to_move = constraints.pop('population')
+    constraints = constraints[mdata.columns]
+    constraints = constraints.sort_index(axis=1)
     constraints.insert(0, 'population', column_to_move)
+    mdata = mdata.sort_index(axis=1)
 
     # Dump constraints and subsetted microdata; names are given in SA config file, config_ni.json
     constraints_file = 'census2021_ni_go.csv'
-    microdata_file = 'us_hh_export_ni_go.csv'
+    mdata_file = 'us_hh_export_ni_go.csv'
     constraints_fullpath = os.path.join(FINAL_PATH, constraints_file)
     constraints_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', constraints_file)
-    microdata_fullpath = os.path.join(FINAL_PATH, microdata_file)
-    microdata_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', microdata_file)
+    mdata_fullpath = os.path.join(FINAL_PATH, mdata_file)
+    mdata_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', mdata_file)
 
     constraints.to_csv(constraints_fullpath)
     constraints.to_csv(constraints_fullpath_synthpop)
-    gb_microdata.to_csv(microdata_fullpath)
-    gb_microdata.to_csv(microdata_fullpath_synthpop)
+    mdata.to_csv(mdata_fullpath)
+    mdata.to_csv(mdata_fullpath_synthpop)

@@ -367,6 +367,24 @@ def get_raw_constraint_data(_label, _cache=True):
     return data
 
 
+# HR 21/11/25 Get full label for (a) creation of constraints and (b) selection of columns for matching to microdata
+def get_constraint_label(_label):
+    _dict = CONSTRAINTS[_label]
+
+    category_map = _dict['category_map']
+    category_list = list(category_map)
+
+    is_hh_level = _dict.get('hh_level', HH_LEVEL_DEFAULT)
+    if is_hh_level:
+        _level = 'hh_'
+    else:
+        _level = 'ind_'
+    _label_sequence = '_'.join(category_list)
+
+    label_full = 'data_' + _level + _label_sequence
+    return label_full
+
+
 ### Main ###
 def main():
     print('\n## Running _02_run_queries... ##')

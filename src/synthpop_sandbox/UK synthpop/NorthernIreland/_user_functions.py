@@ -44,6 +44,17 @@ POP_CENTROIDS_NI = os.path.join(PERSISTENT_DATA_PATH, 'census-2021-population-we
 print('Importing utility functions...')
 
 
+def get_all_microdata():
+    microdata = {nation_group: pd.read_csv(file).set_index('id') for nation_group, file in MICRODATA_LOOKUP.items()}
+    return microdata
+
+def fix_microdata_age_sex(microdata):
+    fixed = {}
+    for nation_group, md in microdata.items():
+        md.columns = [el.replace('age_sex', 'sex_age') for el in md.columns]
+        fixed[nation_group] = md
+    return fixed
+
 # HR 06/11/25 Grab NI spatial boundaries for mapping/visualisation
 def get_spatial_boundaries_ni(file_fullpath=GEOJSON_NI):
     boundaries = gpd.read_file(file_fullpath)
