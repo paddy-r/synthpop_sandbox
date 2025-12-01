@@ -101,7 +101,7 @@ CONSTRAINTS = {
                                                  4: 'upper_further',
                                                  5: 'degree_level',
                                                  6: 'education_other',
-                                                 -8: 'no_qualification',
+                                                 # -8: 'no_qualification',  # Remove to account for over-16s only
                                                  },
                                    },
                   'hh_level': False,
@@ -134,7 +134,7 @@ CONSTRAINTS = {
                                                       3: 'separated',
                                                       4: 'divorced',
                                                       5: 'widowed',
-                                                      -8: 'single',
+                                                      # -8: 'single',  # Remove to account for over-16s only
                                                       }
                                       },
                      'hh_level': False,
@@ -165,7 +165,7 @@ CONSTRAINTS = {
                                                      9: 'looking_after_home',
                                                      10: 'lts_disabled',
                                                      11: 'activity_other',
-                                                     -8: 'activity_other',
+                                                     # -8: 'activity_other',  # Remove to account for over-16s only
                                                      },
                                         },
                        'hh_level': False,
