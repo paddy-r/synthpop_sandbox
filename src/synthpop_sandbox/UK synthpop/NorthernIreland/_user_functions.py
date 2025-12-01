@@ -39,10 +39,30 @@ MICRODATA_LOOKUP = {
 GEOJSON_NI = os.path.join(PERSISTENT_DATA_PATH, 'DZ2021.geojson')
 POP_CENTROIDS_NI = os.path.join(PERSISTENT_DATA_PATH, 'census-2021-population-weighted-centroids-data-zone.csv')
 
+# Output spec for simulated annealing
+CONSTRAINTS_OUTFILE = 'census2021_ni_go.csv'
+MDATA_OUTFILE = 'us_hh_export_ni_go.csv'
+
 
 ### Utility functions ###process_pop
 print('Importing utility functions...')
 
+
+def get_microdata_outpath():
+    mdata_fullpath = os.path.join(FINAL_PATH, MDATA_OUTFILE)
+    return mdata_fullpath
+
+def get_constraints_outpath():
+    constraints_fullpath = os.path.join(FINAL_PATH, CONSTRAINTS_OUTFILE)
+    return constraints_fullpath
+
+def get_microdata_outpath_compass():
+    mdata_fullpath = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', MDATA_OUTFILE)
+    return mdata_fullpath
+
+def get_constraints_outpath_compass():
+    constraints_fullpath = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', CONSTRAINTS_OUTFILE)
+    return constraints_fullpath
 
 def get_all_microdata():
     microdata = {nation_group: pd.read_csv(file).set_index('id') for nation_group, file in MICRODATA_LOOKUP.items()}
@@ -70,8 +90,13 @@ def merge_boundaries_centroids_ni(boundaries=None, centroids=None):
     if centroids is None:
         centroids = get_population_centroids_ni()
 
-    centroids.rename(columns={'DZ2021_code': 'DZ2021_cd', 'DZ2021_name': 'DZ2021_nm', 'X': 'centroid_x', 'Y': 'centroid_y'}, inplace=True)
-    centroids.drop(columns=['DZ2021_nm'], inplace=True)
+    centroids.rename(columns={'DZ2021_code': 'DZ2021_cd',
+                              'DZ2021_name': 'DZ2021_nm',
+                              'X': 'centroid_x',
+                              'Y': 'centroid_y'},
+                     inplace=True)
+    centroids.drop(columns=['DZ2021_nm'],
+                   inplace=True)
 
     merge_key = 'DZ2021_cd'
     merged = boundaries.merge(centroids, on=merge_key)
