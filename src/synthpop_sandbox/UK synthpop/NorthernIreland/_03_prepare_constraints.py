@@ -6,6 +6,7 @@
 
 
 ### Imports ###
+import numpy as np
 import pandas as pd
 from _02_run_queries import *
 
@@ -49,7 +50,10 @@ def process_urban_rural_data(pop_hh):
     return ruc
 
 
-def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
+def process_constraint_data(_label,
+                            replace_zero_rows=True,
+                            _cache_path=RAW_DATA_PATH,
+                            cache=True):
     _dict = CONSTRAINTS[_label]
     _cache_fullpath = get_raw_constraint_fullpath(_label)
     raw = pd.read_csv(_cache_fullpath)
@@ -82,6 +86,15 @@ def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
     if len(category_list) > 1:  # Accounts for multivariate constraints
         processed.columns = processed.columns.map(VARIABLE_JOINER.join)
     processed.columns = [full_label + el for el in processed.columns]
+
+    # Replace any areas with all zeroes - as this indicates missing data - with nan
+    if replace_zero_rows:
+        missing_areas = processed.eq(0).all(axis=1)  # Get areas with all missing data...
+        if len(missing_areas) > 0:
+            print('Some missing data for {}; replacing with NaN'.format(full_label))
+            processed.loc[missing_areas, :] = np.nan  # ...and replace with nan
+        else:
+            print('No missing data for {}'.format(full_label))
 
     if cache:
         # print('Caching to file')
@@ -188,15 +201,8 @@ if __name__ == "__main__":
     constraints.insert(0, 'population', column_to_move)
     mdata = mdata.sort_index(axis=1)
 
-    # Dump constraints and subsetted microdata; names are given in SA config file, config_ni.json
-    constraints_file = 'census2021_ni_go.csv'
-    mdata_file = 'us_hh_export_ni_go.csv'
-    constraints_fullpath = os.path.join(FINAL_PATH, constraints_file)
-    constraints_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', constraints_file)
-    mdata_fullpath = os.path.join(FINAL_PATH, mdata_file)
-    mdata_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', mdata_file)
-
+    # Dump constraints and subsetted microdata
+    constraints_fullpath = get_constraints_outpath()
+    mdata_fullpath = get_microdata_outpath()
     constraints.to_csv(constraints_fullpath)
-    constraints.to_csv(constraints_fullpath_synthpop)
     mdata.to_csv(mdata_fullpath)
-    mdata.to_csv(mdata_fullpath_synthpop)
