@@ -6,6 +6,7 @@
 
 
 ### Imports ###
+import numpy as np
 import pandas as pd
 from _02_run_queries import *
 
@@ -49,7 +50,10 @@ def process_urban_rural_data(pop_hh):
     return ruc
 
 
-def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
+def process_constraint_data(_label,
+                            replace_zero_rows=True,
+                            _cache_path=RAW_DATA_PATH,
+                            cache=True):
     _dict = CONSTRAINTS[_label]
     _cache_fullpath = get_raw_constraint_fullpath(_label)
     raw = pd.read_csv(_cache_fullpath)
@@ -77,19 +81,23 @@ def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
                                       values=COUNT_DEFAULT,
                                       aggfunc='sum')  # Must specify sum as default is mean => very wrong
 
-    is_hh_level = _dict.get('hh_level', HH_LEVEL_DEFAULT)
-    if is_hh_level:
-        _level = 'hh_'
-    else:
-        _level = 'ind_'
-    _label_sequence = '_'.join(category_list)
-    full_label = 'data_' + _level + _label_sequence + LABEL_JOINER
+    full_label = get_constraint_label(_label) + LABEL_JOINER
+
     if len(category_list) > 1:  # Accounts for multivariate constraints
         processed.columns = processed.columns.map(VARIABLE_JOINER.join)
     processed.columns = [full_label + el for el in processed.columns]
 
+    # Replace any areas with all zeroes - as this indicates missing data - with nan
+    if replace_zero_rows:
+        missing_areas = processed.eq(0).all(axis=1)  # Get areas with all missing data...
+        if len(missing_areas) > 0:
+            print('Some missing data for {}; replacing with NaN'.format(full_label))
+            processed.loc[missing_areas, :] = np.nan  # ...and replace with nan
+        else:
+            print('No missing data for {}'.format(full_label))
+
     if cache:
-        print('Caching to file')
+        # print('Caching to file')
         _processed_fullpath = get_processed_constraint_fullpath(_label)
         processed.to_csv(_processed_fullpath)
 
@@ -98,7 +106,7 @@ def process_constraint_data(_label, _cache_path=RAW_DATA_PATH, cache=True):
 
 ### Main ###
 def main(_labels=CONSTRAINTS):
-    print('\n## Running 03_prepare_constraints... ##')
+    print('\n## Running _03_prepare_constraints... ##')
 
     # Prepare population data by DZ
     pop_data = process_population_data()
@@ -123,7 +131,7 @@ def main(_labels=CONSTRAINTS):
     #     'employed4_size4_hh',  # HH multi
     #     'type9_hh',            # HH uni
     #     # 'tenure7_child2_hh'    # HH uni  # EXCLUDE: Only 50% coverage
-    #     # 'sex2_age11_hrp',      # HH multi  # EXCLUDE: HRP data not use in EW or S so far
+    #     # 'sex2_age11_hrp',      # HH multi  # EXCLUDE: HRP data not used in EW or S so far
     # ]
 
     data = {}
@@ -134,8 +142,8 @@ def main(_labels=CONSTRAINTS):
         except Exception as e:
             print(e)
             print("Couldn't do constraint:", _label)
+            pass
 
-    # data = {l: process_constraint_data(l) for l in _labels}
     return ruc_data, data
 
 
@@ -149,44 +157,52 @@ if __name__ == "__main__":
     stem['population'] = ruc_data.sum(axis=1)  # Just grab total hh population from sum of urban-rural master constraint
     constraints = stem.merge(ruc_data, how='left', on='areacode')
 
-    # ...then merge individual constraints
+    # ...then merge individual constraints into single dataset
     for _label, _dataset in data.items():
         constraints = constraints.merge(_dataset, how='left', on='areacode')
 
-    # Now must grab all available US pool data (Scotland + EW)...
-    scot_pool_fullpath = os.path.join(SCOTLAND_PATH, 'us_hh_export_go.csv')
-    scot_pool = pd.read_csv(scot_pool_fullpath).set_index('id')
-    ew_pool_fullpath = os.path.join(ENGLAND_WALES_PATH, 'us_hh_export_go.csv')
-    ew_pool = pd.read_csv(ew_pool_fullpath).set_index('id')
+    # Grab all microdata...
+    mdata_lookup = get_all_microdata()
+    mdata_lookup = fix_microdata_age_sex(mdata_lookup)
+    mdata = pd.DataFrame(index=mdata_lookup['Scotland'].index)
 
-    # Merge S and EW data to maximise number of constraints data
-    cols_to_merge = list(set(ew_pool.columns) - set(scot_pool.columns))  # Columns only in EW data
-    gb_pool = pd.merge(scot_pool, ew_pool[cols_to_merge], left_index=True, right_index=True, how='outer')
+    # ...then retain only microdata present in constraints data, filling in empty columns as necessary
+    for constraint, cdata in data.items():
 
-    # ...then subset constraints and make sure order is correct by sorting both
-    gb_pool.columns = [el.replace('age_sex', 'sex_age') for el in gb_pool.columns]  # Age-sex order in headers is wrong!
-    common_columns = list(set(constraints.columns) & set(gb_pool.columns))
-    gb_pool = gb_pool[common_columns]
+        nation_source = CONSTRAINTS[constraint].get('nation_source', NATION_SOURCE_DEFAULT)
+        full_label = get_constraint_label(constraint) + LABEL_JOINER
+        constraint_cols = [el for el in cdata.columns if el.startswith(full_label)]
 
-    # Remove any extraneous columns present in GB data not present in constraints
-    missing_columns = list(set(constraints.columns) - set(gb_pool.columns) - {'population'})
-    # gb_pool.loc[:, missing_columns] = 0  # Option 1: Create missing columns and fill with zeroes, to agree with NI constraints columns
-    constraints.drop(columns=missing_columns, axis=1, inplace=True)  # Option 2: Remove those missing columns from constraints table
+        mdata_raw = mdata_lookup[nation_source]
+        mdata_cols = [el for el in mdata_raw.columns if el.startswith(full_label)]
 
-    gb_pool.sort_index(axis=1, inplace=True)
-    constraints.sort_index(axis=1, inplace=True)
+        cols_present = set(constraint_cols) & set(mdata_cols)
+        cols_missing = set(constraint_cols) - set(mdata_cols)
+
+        # Check if ANY microdata columns present; if so, fill any missing columns with zero
+        # If NO COLUMNS present, assume constraint not properly configured and ignore
+        if len(cols_present) == 0:
+            print('No microdata for {}; skipping'.format(constraint))
+            continue
+
+        if len(cols_missing) == 0:
+            print('Complete microdata for {}; adding to final dataset'.format(constraint))
+            mdata = mdata.merge(mdata_raw[list(cols_present)], left_index=True, right_index=True)
+
+        elif len(cols_missing) > 0:
+            print('Some missing columns for {}; filling in with zeroes'.format(constraint))
+            mdata = mdata.merge(mdata_raw[list(cols_present)], left_index=True, right_index=True)
+            mdata.loc[:, list(cols_missing)] = 0
+
+    # Finally, remove any constraints data not present in microdata and sort both datasets
     column_to_move = constraints.pop('population')
+    constraints = constraints[mdata.columns]
+    constraints = constraints.sort_index(axis=1)
     constraints.insert(0, 'population', column_to_move)
+    mdata = mdata.sort_index(axis=1)
 
-    # Dump constraints and subsetted US pool data; names are given in UK808 config file, config_ni.json
-    constraints_file = 'census2021_ni_go.csv'
-    pool_file = 'us_hh_export_ni_go.csv'
-    constraints_fullpath = os.path.join(FINAL_PATH, constraints_file)
-    constraints_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', constraints_file)
-    pool_fullpath = os.path.join(FINAL_PATH, pool_file)
-    pool_fullpath_synthpop = os.path.join(COMPASS_PATH, 'data', 'Northern Ireland', pool_file)
-
+    # Dump constraints and subsetted microdata
+    constraints_fullpath = get_constraints_outpath()
+    mdata_fullpath = get_microdata_outpath()
     constraints.to_csv(constraints_fullpath)
-    constraints.to_csv(constraints_fullpath_synthpop)
-    gb_pool.to_csv(pool_fullpath)
-    gb_pool.to_csv(pool_fullpath_synthpop)
+    mdata.to_csv(mdata_fullpath)

@@ -14,10 +14,12 @@ import time
 
 ### Main ###
 def main(_path):
-    scripts = ['02_run_queries.py',
-               '03_prepare_constraints.py',
-               '04_recode_setup_survey.py',
-               '05_create_synthpop.py'
+    print('\n## Running _00_main... ##')
+
+    scripts = ['_02_run_queries.py',
+               '_03_prepare_constraints.py',
+               '_04_recode_setup_survey.py',
+               '_05_create_synthpop.py'
                ]
     for s in scripts:
         script_fullpath = os.path.join(_path, s)

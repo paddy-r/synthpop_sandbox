@@ -56,13 +56,14 @@ HRP_COL_DEFAULT = 'Household Reference Person Indicator Code'
 HRP_HEADERS = ["Household Reference Person Indicator Code",
                "Household Reference Person Indicator Label",
                ]
+NATION_SOURCE_DEFAULT = 'Scotland'  # Specify which nation group to grab microdata from - workaround w/o all-UK process
 LABEL_JOINER = '%'
 VARIABLE_JOINER = '_'  # Should be reserved string for separating multivariate constraints later, e.g. for validation
 
 # Constraints data dictionary, fully automated
 # 1. Constraint label should indicate specific variable type, e.g. age11 is the NISRA 11-category age spec
 # 2. URL is found manually using the NISRA custom table builder here: https://build.nisra.gov.uk/en/custom/dataset
-# 3. The URL is modified at runtime to retrieve the corresponding CSV
+# 3. The URL is modified at runtime to retrieve the corresponding CSV - method via email from NISRA
 # 4. var_map maps the variables as given in the NISRA dataset to those required for the final constraint format
 # 5. These should be in the same order as appear in the final format, as should those in category_map
 # 6. Each value in var_map has a corresponding key in category_map, which maps to the final constraint categories
@@ -100,7 +101,7 @@ CONSTRAINTS = {
                                                  4: 'upper_further',
                                                  5: 'degree_level',
                                                  6: 'education_other',
-                                                 -8: 'no_qualification',
+                                                 # -8: 'no_qualification',  # Remove to account for over-16s only
                                                  },
                                    },
                   'hh_level': False,
@@ -133,7 +134,7 @@ CONSTRAINTS = {
                                                       3: 'separated',
                                                       4: 'divorced',
                                                       5: 'widowed',
-                                                      -8: 'single',
+                                                      # -8: 'single',  # Remove to account for over-16s only
                                                       }
                                       },
                      'hh_level': False,
@@ -164,11 +165,28 @@ CONSTRAINTS = {
                                                      9: 'looking_after_home',
                                                      10: 'lts_disabled',
                                                      11: 'activity_other',
-                                                     -8: 'activity_other',
+                                                     # -8: 'activity_other',  # Remove to account for over-16s only
                                                      },
                                         },
                        'hh_level': False,
+                       'nation_source': 'EnglandWales',
                        },
+    'industry7_ind': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=PEOPLE&v=DZ21&v=INDUSTRY_AGG9',
+                      'var_map': {'Industry (Current) - 9 Categories Code': 'industry',
+                                  },
+                      'category_map': {'industry': {1: 'abde_agriculture_energy_water',
+                                                    2: 'c_manufacturing',
+                                                    3: 'f_construction',
+                                                    4: 'gi_distribution_hotels_restaurants',
+                                                    5: 'hj_transport_communication',
+                                                    6: 'klmn_financial_etc',
+                                                    7: 'opq_public_admin_education_health',
+                                                    8: 'rstu_other',
+                                                    # -8: 'rstu_other',
+                                                    },
+                                       },
+                      'hh_level': False,
+                      },
     'centralheating2_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_CENTRAL_HEATING_IND',
                            'var_map': {'Central Heating - 2 Categories Code': 'heating',
                                        },
@@ -187,6 +205,7 @@ CONSTRAINTS = {
                                                          5: 'deprivation_4',
                                                          },
                                          },
+                        'nation_source': 'EnglandWales',
                         },
     'habitable6_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=NUMBER_OF_ROOMS_AGG6',
                       'var_map': {'Rooms (Number) - 6 Categories Code': 'habitable',
@@ -228,6 +247,7 @@ CONSTRAINTS = {
                                                  4: 'hh_size_4',
                                                  },
                                         },
+                       'nation_source': 'EnglandWales',
                        },
     'employed4_size4_hh': {
         'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_ADULTS_EMPLOYMENT_TC3&v=HH_SIZE_TC4',
@@ -260,6 +280,7 @@ CONSTRAINTS = {
                                            9: 'other',
                                            },
                                   },
+                 'nation_source': 'EnglandWales',
                  },
     'tenure7_hh': {'url': 'https://build.nisra.gov.uk/en/custom/data?d=HOUSEHOLD&v=DZ21&v=HH_TENURE_AGG7',
                    'var_map': {'Tenure - 7 Categories Code': 'tenure',
@@ -362,9 +383,27 @@ def get_raw_constraint_data(_label, _cache=True):
     return data
 
 
+# HR 21/11/25 Get full label for (a) creation of constraints and (b) selection of columns for matching to microdata
+def get_constraint_label(_label):
+    _dict = CONSTRAINTS[_label]
+
+    category_map = _dict['category_map']
+    category_list = list(category_map)
+
+    is_hh_level = _dict.get('hh_level', HH_LEVEL_DEFAULT)
+    if is_hh_level:
+        _level = 'hh_'
+    else:
+        _level = 'ind_'
+    _label_sequence = '_'.join(category_list)
+
+    label_full = 'data_' + _level + _label_sequence
+    return label_full
+
+
 ### Main ###
 def main():
-    print('\n## Running 02_run_queries... ##')
+    print('\n## Running _02_run_queries... ##')
 
     # Create data folders
     check_folders_present()
